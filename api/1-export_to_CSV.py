@@ -4,31 +4,47 @@ get all the data from file that gather the data then
 export in format of csv.
 """
 import csv
-import json
+import requests
 import sys
-import urllib.request
+
+
+def main():
+    if len(sys.argv) != 2:
+        print(f"Usage: {sys.argv[0]} EMPLOYEE_ID", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        employee_id = int(sys.argv[1])
+    except ValueError:
+        print("EMPLOYEE_ID must be an integer", file=sys.stderr)
+        sys.exit(1)
+
+    base = "https://jsonplaceholder.typicode.com"
+
+    user_resp = requests.get(f"{base}/users/{employee_id}")
+    if user_resp.status_code != 200:
+        sys.exit(1)
+    user = user_resp.json()
+    username = user.get("username")
+
+    todos_resp = requests.get(f"{base}/todos", params={"userId": employee_id})
+    if todos_resp.status_code != 200:
+        sys.exit(1)
+    todos = todos_resp.json()
+
+    filename = f"{employee_id}.csv"
+    with open(filename, "w", newline="", encoding="utf-8") as fobj:
+        writer = csv.writer(fobj, quoting=csv.QUOTE_ALL)
+        for todo in todos:
+            writer.writerow(
+                [
+                    employee_id,
+                    username,
+                    todo.get("completed"),
+                    todo.get("title"),
+                ]
+            )
 
 
 if __name__ == "__main__":
-    emp_id = sys.argv[1]
-    api = "https://jsonplaceholder.typicode.com"
-
-    with urllib.request.urlopen(
-        "{}/users/{}".format(api, emp_id)
-    ) as res:
-        user = json.load(res)
-
-    with urllib.request.urlopen(
-        "{}/todos?userId={}".format(api, emp_id)
-    ) as res:
-        todos = json.load(res)
-
-    with open("{}.csv".format(emp_id), "w", newline="") as f:
-        writer = csv.writer(f, quoting=csv.QUOTE_ALL)
-        for task in todos:
-            writer.writerow([
-                emp_id,
-                user.get("username"),
-                str(task.get("completed")),
-                task.get("title")
-            ])
+    main()
