@@ -5,34 +5,44 @@ import requests
 import sys
 
 
-if __name__ == "__main__":
-    employee_id = int(sys.argv[1])
+def main():
+    if len(sys.argv) != 2:
+        print(f"Usage: {sys.argv[0]} EMPLOYEE_ID", file=sys.stderr)
+        sys.exit(1)
 
-    user_url = (
-        "https://jsonplaceholder.typicode.com/users/{}"
-        .format(employee_id)
-    )
-    todo_url = (
-        "https://jsonplaceholder.typicode.com/todos?userId={}"
-        .format(employee_id)
-    )
+    try:
+        employee_id = int(sys.argv[1])
+    except ValueError:
+        print("EMPLOYEE_ID must be an integer", file=sys.stderr)
+        sys.exit(1)
 
-    user_response = requests.get(user_url)
-    todo_response = requests.get(todo_url)
+    base = "https://jsonplaceholder.typicode.com"
 
-    user = user_response.json()
-    todos = todo_response.json()
-
+    # Fetch user info
+    user_resp = requests.get(f"{base}/users/{employee_id}")
+    if user_resp.status_code != 200:
+        sys.exit(1)
+    user = user_resp.json()
     employee_name = user.get("name")
-    total_tasks = len(todos)
-    done_tasks = [
-        task for task in todos if task.get("completed") is True
-    ]
 
-    print(
-        "Employee {} is done with tasks({}/{}):"
-        .format(employee_name, len(done_tasks), total_tasks)
+    # Fetch todos for the employee
+    todos_resp = requests.get(f"{base}/todos", params={"userId": employee_id})
+    if todos_resp.status_code != 200:
+        sys.exit(1)
+    todos = todos_resp.json()
+
+    completed = [t for t in todos if t.get("completed") is True]
+
+    header = (
+        f"Employee {employee_name} is done with tasks"
+        f"({len(completed)}/{len(todos)}):"
     )
+    print(header)
 
-    for task in done_tasks:
-        print("\t {}".format(task.get("title")))
+    for task in completed:
+        title = task.get("title")
+        print("\t {}".format(title))
+
+
+if __name__ == "__main__":
+    main()
