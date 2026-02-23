@@ -1,51 +1,28 @@
 #!/usr/bin/python3
-"""
-Fetch all users and their TODO tasks from the JSONPlaceholder API
-and export them to a single JSON file in a structured dictionary format.
-
-Output structure:
-{
-    "USER_ID": [
-        {
-            "username": "USERNAME",
-            "task": "TASK_TITLE",
-            "completed": BOOLEAN
-        },
-        ...
-    ],
-    ...
-}
-
-The file is saved as "todo_all_employees.json".
-"""
+"""returns information about
+all tasks from all employees and save them in JSON"""
 import json
-import urllib.request
+import requests
+import sys
 
 
 if __name__ == "__main__":
-    api = "https://jsonplaceholder.typicode.com"
+    API_URL = "https://jsonplaceholder.typicode.com"
+    users_resp = requests.get(f"{API_URL}/users")
+    if users_resp.status_code != 200:
+        sys.exit()
+    users = users_resp.json()
+    users_tasks = {}
+    for user in users:
+        tasks = requests.get(f"{API_URL}/users/{user['id']}/todos").json()
 
-    # Fetch all users
-    with urllib.request.urlopen(f"{api}/users") as res:
-        users = json.load(res)
+        users_tasks[user.get("id")] = []
+        for task in tasks:
+            task_dict = {
+                "username": user.get("username"),
+                "task": task.get("title"),
+                "completed": task.get("completed")}
+            users_tasks[user.get("id")].append(task_dict)
 
-    # Fetch all TODOs
-    with urllib.request.urlopen(f"{api}/todos") as res:
-        todos = json.load(res)
-
-    # Map user IDs to usernames
-    usernames = {u.get("id"): u.get("username") for u in users}
-
-    # Build the result dictionary
-    result = {}
-    for t in todos:
-        uid = str(t.get("userId"))
-        result.setdefault(uid, []).append({
-            "username": usernames.get(t.get("userId")),
-            "task": t.get("title"),
-            "completed": t.get("completed")
-        })
-
-    # Write to JSON file
-    with open("todo_all_employees.json", "w") as f:
-        json.dump(result, f)
+    with open("todo_all_employees.json", "w") as file:
+        json.dump(users_tasks, file)
